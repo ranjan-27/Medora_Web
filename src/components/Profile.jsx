@@ -15,7 +15,8 @@ const Profile = () => {
   // Fetch profile from backend
   useEffect(() => {
     const fetchProfile = async () => {
-      const token = localStorage.getItem("token");
+      let token = localStorage.getItem("token");
+      token = token ? token.replace(/^"|"$/g, '').trim() : null;
       if (!token) {
         setError("No token found. Please login first.");
         setLoading(false);
@@ -26,6 +27,19 @@ const Profile = () => {
         const res = await fetch(`${BASE_URL}/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          const text = await res.text().catch(() => null);
+          if (res.status === 403) {
+            // Invalid token → clear and redirect to login
+            localStorage.removeItem('token');
+            navigate('/auth');
+            return;
+          }
+          setError(text || `Failed to fetch profile (${res.status})`);
+          return;
+        }
 
         const data = await res.json();
         if (data.error) {
@@ -50,7 +64,8 @@ const Profile = () => {
 
   // Save profile to backend
   const handleSave = async () => {
-    const token = localStorage.getItem("token");
+    let token = localStorage.getItem("token");
+    token = token ? token.replace(/^"|"$/g, '').trim() : null;
     try {
       const res = await fetch(`${BASE_URL}/update-profile`, {
         method: "PUT",
@@ -60,11 +75,13 @@ const Profile = () => {
         },
         body: JSON.stringify(profile),
       });
-      const data = await res.json();
-      if (data.error) {
-        alert(data.error || "Failed to update profile ❌");
-      } else {
+      const text = await res.text().catch(() => null);
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: text }; }
+      if (res.ok && !data.error) {
         alert("Profile updated successfully ✅");
+      } else {
+        alert(data.error || `Failed to update profile (${res.status})`);
       }
     } catch (err) {
       alert("Error updating profile");

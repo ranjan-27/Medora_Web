@@ -7,7 +7,8 @@ export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const token = localStorage.getItem("token");
+  let token = localStorage.getItem("token");
+  token = token ? token.replace(/^"|"$/g, '').trim() : null;
   const navigate = useNavigate();
 
   // API is imported from src/api.js and already includes the /api prefix

@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { API } from "../api";
 
+
 const Auth = () => {
   const navigate = useNavigate();
   const [isSignup, setIsSignup] = useState(true);
@@ -20,6 +21,7 @@ const Auth = () => {
   const [forgotOtpSent, setForgotOtpSent] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
+const [isLoading, setIsLoading] = useState(false);
 
   // API base (API already includes `/api` suffix). e.g. http://localhost:5000/api
   const BASE_URL = `${API}/auth`;
@@ -27,13 +29,20 @@ const Auth = () => {
   // Signup → creates user (verified=false) and triggers OTP email
   const handleSignup = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
-      const data = await response.json();
+      const text = await response.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
       if (response.ok) {
        // alert("Signup successful ✅. Check your email for OTP.");
         toast.success("Signup successful ✅. Check your email for OTP.");
@@ -55,19 +64,28 @@ const Auth = () => {
       console.error(err);
       //alert("Error connecting to backend");
       toast.error("Error connecting to backend");
+    }finally {
+      setIsLoading(false);
     }
   };
 
   // Step 1: Send OTP for password reset
   const handleForgotPassword = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const text = await res.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
       if (res.ok) {
         //alert("Reset OTP sent ✅. Check your email.");
         toast.info("Reset OTP sent ✅. Check your email.");
@@ -80,19 +98,28 @@ const Auth = () => {
     } catch (err) {
       console.error(err);
       alert("Error connecting to backend");
+    }finally {
+      setIsLoading(false);
     }
   };
 
   // Step 2: Verify OTP + set new password
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, newPassword }),
       });
-      const data = await res.json();
+      const text = await res.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
       if (res.ok) {
         //alert("Password reset successful ✅. Please log in.");
         toast.success("Password reset successful ✅. Please log in.");
@@ -106,6 +133,8 @@ const Auth = () => {
     } catch (err) {
       console.error(err);
       alert("Error connecting to backend");
+    }finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,13 +142,20 @@ const Auth = () => {
   // Verify OTP → marks user as verified
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
       });
-      const data = await response.json();
+      const text = await response.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
       if (response.ok) {
         //alert("Email verified successfully ✅. You can now log in.");
         toast.success("Email verified successfully ✅. You can now log in.");
@@ -139,19 +175,28 @@ const Auth = () => {
     } catch (err) {
       console.error(err);
       alert("Error connecting to backend");
+    }finally {
+      setIsLoading(false);
     }
   };
 
   // Login → only works if verified=true
   const handleLogin = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      const data = await response.json();
+      const text = await response.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
       if (response.ok) {
         //alert("Login successful ✅");
         toast.success("Login successful ✅");
@@ -169,6 +214,8 @@ const Auth = () => {
     } catch (err) {
       console.error(err);
       alert("Error connecting to backend");
+    }finally {
+      setIsLoading(false);
     }
   };
 
@@ -184,6 +231,7 @@ const Auth = () => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            disabled={isLoading}
           />
           <input
             type="email"
@@ -191,6 +239,7 @@ const Auth = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isLoading}
           />
           <input
             type="password"
@@ -198,10 +247,13 @@ const Auth = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
 
-          {!otpSent && (
-            <button className="btn1" type="submit">Sign Up</button>
+           {!otpSent && (
+            <button className="btn1" type="submit" disabled={isLoading}>
+              {isLoading ? "Loading..." : "Sign Up"}
+            </button>
           )}
 
           {otpSent && (
@@ -212,33 +264,44 @@ const Auth = () => {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 required
+                disabled={isLoading}
               />
-              <button className="btn1" type="submit">Verify OTP</button>
+              <button className="btn1" type="submit" disabled={isLoading}>
+                {isLoading ? "Loading..." : "Verify OTP"}
+              </button>
               <button
                 type="button"
                 className="btn1"
+                disabled={isLoading}
                 onClick={async () => {
+                  setIsLoading(true);
                   try {
                     const response = await fetch(`${BASE_URL}/send-otp`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ email })
                     });
-                    const data = await response.json();
+                    const text = await response.text().catch(() => null);
+                    let data;
+                    try {
+                      data = text ? JSON.parse(text) : {};
+                    } catch (e) {
+                      data = { error: text };
+                    }
                     if (response.ok) {
-                      //alert("New OTP sent ✅");
                       toast.info("New OTP sent ✅");
                     } else {
-                      //alert(data.error || "Failed to resend OTP ❌");
                       toast.error(data.error || "Failed to resend OTP ❌");
                     }
                   } catch (err) {
                     console.error(err);
                     alert("Error resending OTP");
+                  }finally {
+                    setIsLoading(false);
                   }
                 }}
               >
-                Resend OTP
+               {isLoading ? "Loading..." : "Resend OTP"}
               </button>
             </>
           )}
@@ -253,6 +316,7 @@ const Auth = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isLoading}
           />
           <input
             type="password"
@@ -260,8 +324,11 @@ const Auth = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
-          <button className="btn1" type="submit">Login</button>
+           <button className="btn1" type="submit" disabled={isLoading}>
+            {isLoading ? "Loading..." : "Login"}
+          </button>
           <button
             type="button"
             className="f"
@@ -269,6 +336,7 @@ const Auth = () => {
               setIsForgot(true);
               setForgotOtpSent(false);
             }}
+            disabled={isLoading}
           >
             Forgot Password?
           </button>
@@ -292,8 +360,11 @@ const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
-                  <button className="btn1" type="submit">Send Reset OTP</button>
+                  <button className="btn1" type="submit" disabled={isLoading}>
+                    {isLoading ? "Loading..." : "Send Reset OTP"}
+                  </button>
                 </>
               )}
 
@@ -305,6 +376,7 @@ const Auth = () => {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                   <input
                     type="password"
@@ -313,8 +385,11 @@ const Auth = () => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={5}
+                    disabled={isLoading}
                   />
-                  <button className="btn1" type="submit">Reset Password</button>
+                 <button className="btn1" type="submit" disabled={isLoading}>
+                    {isLoading ? "Loading..." : "Reset Password"}
+                  </button>
                 </>
               )}
             </form>

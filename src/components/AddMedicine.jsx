@@ -99,12 +99,20 @@ const AddMedicine = () => {
         });
       }
 
-      const data = await res.json();
+      const text = await res.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
+
       if (res.ok) {
         toast.success(formData._id ? "Medicine updated successfully ✅" : "Medicine added successfully ✅");
         navigate("/MyMed"); // redirect to medicine list
       } else {
-        toast.error(data.error || "Failed to save medicine ❌");
+        const msg = data.error || text || `Failed to save medicine (${res.status})`;
+        toast.error(msg);
       }
     } catch (err) {
       console.error(err);

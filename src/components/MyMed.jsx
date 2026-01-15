@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./MyMed.css";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import { API } from "../api";
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
 
@@ -13,19 +13,16 @@ const MyMed = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const API_BASE = import.meta.env.VITE_API_BASE || (
-    typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:5000"
-      : "https://1fee2aed-8698-49f5-8847-f331c376cc12-00-1iee6uea02ep9.pike.replit.dev:5000"
-  );
-  const BASE_URL = `${API_BASE}/api/medicines`;
+  const BASE_URL = `${API}/medicines`;
 
   // Fetch medicines from backend
   useEffect(() => {
     const fetchMedicines = async () => {
-      const token = localStorage.getItem("token");
+      let token = localStorage.getItem("token");
+      token = token ? token.replace(/^"|"$/g, '').trim() : null;
       if (!token) {
         setError("No token found. Please login first.");
+        setLoading(false);
         return;
       }
 
@@ -33,8 +30,14 @@ const MyMed = () => {
         const res = await fetch(BASE_URL, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          const text = await res.text().catch(() => null);
+          setError(text || `Failed to fetch medicines (${res.status})`);
+          return;
+        }
         const data = await res.json();
-        if (res.ok) {
+        if (data && res.ok) {
           setMedicines(data.medicines || []);
         } else {
           setError(data.error || "Failed to fetch medicines ❌");
@@ -83,18 +86,21 @@ const MyMed = () => {
         {
           label: 'Yes',
           onClick: async () => {
-            const token = localStorage.getItem("token");
+              let token = localStorage.getItem("token");
+              token = token ? token.replace(/^"|"$/g, '').trim() : null;
             try {
               const res = await fetch(`${BASE_URL}/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
               });
-              const data = await res.json();
+              const text = await res.text().catch(() => null);
+              let data;
+              try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: text }; }
               if (res.ok) {
                 setMedicines(medicines.filter((m) => m._id !== id));
                 toast.success("Medicine deleted successfully ✅");
               } else {
-                toast.error(data.error || "Failed to delete medicine ❌");
+                toast.error(data.error || `Failed to delete medicine (${res.status})`);
               }
             } catch (err) {
               toast.error("Error deleting medicine");

@@ -12,10 +12,6 @@ const transporter = require('./config/emailConfig');
 const notificationsRoute = require('./routes/notifications');
 const debugRoute = require('./routes/debug');
 const { startAutoMissJob } = require("./jobs/autoMiss");
-
-
-
-
 // Load environment variables first
 dotenv.config();
  

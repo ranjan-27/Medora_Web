@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './Footer.css';
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { API } from "../api";
 const Footer = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -11,11 +12,8 @@ const Footer = () => {
     message: ""
   });
 
-  const API_BASE = import.meta.env.VITE_API_BASE || (
-    typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:5000"
-      : "https://1fee2aed-8698-49f5-8847-f331c376cc12-00-1iee6uea02ep9.pike.replit.dev:5000"
-  );
+  
+  const API_BASE = `${API}`;
 
   const handleChange = (e) => {
     setFormData({
@@ -29,7 +27,7 @@ const Footer = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/contact/send-email`, {
+      const res = await fetch(`${API_BASE}/contact/send-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -37,19 +35,20 @@ const Footer = () => {
         body: JSON.stringify(formData)
       });
 
-      const data = await res.json();
+      const text = await res.text().catch(() => null);
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text };
+      }
 
-      if (data.success) {
-       // alert("✅ Thank you for contacting us! We will get back to you soon.");
+      if (res.ok && data.success) {
         toast.success("✅ Thank you for contacting us! We will get back to you soon.");
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          message: ""
-        });
+        setFormData({ name: "", email: "", phone: "", message: "" });
       } else {
-        alert("❌ " + (data.error || "Failed to send message"));
+        const msg = data.error || text || `Failed to send message (${res.status})`;
+        toast.error(msg);
       }
     } catch (err) {
       alert("❌ Error sending message. Please try again.");

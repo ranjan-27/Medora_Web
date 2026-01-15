@@ -17,9 +17,19 @@ const Home = () => {
         const res = await fetch(`${API}/auth/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          const text = await res.text().catch(() => null);
+          console.error('Profile fetch failed:', res.status, text);
+          localStorage.removeItem("token");
+          localStorage.removeItem("userName");
+          setIsLoggedIn(false);
+          navigate("/auth");
+          return;
+        }
         const data = await res.json();
 
-        if (res.ok && data.user) {
+        if (data && data.user) {
           setIsLoggedIn(true);
           // ✅ Choose what to display: email or name
           setUserName(data.user.name || data.user.email);
