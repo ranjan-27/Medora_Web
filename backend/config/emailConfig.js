@@ -13,13 +13,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify connection
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ Email server connection failed:", error);
-  } else {
-    console.log("✅ Email server is ready to send messages");
-  }
-});
+
 
 module.exports = transporter;
