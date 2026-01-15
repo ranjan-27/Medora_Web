@@ -11,6 +11,7 @@ import 'react-confirm-alert/src/react-confirm-alert.css';
 const MyMed = () => {
   const [medicines, setMedicines] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const BASE_URL = `${API}/medicines`;
@@ -18,6 +19,7 @@ const MyMed = () => {
   // Fetch medicines from backend
   useEffect(() => {
     const fetchMedicines = async () => {
+      setLoading(true);
       let token = localStorage.getItem("token");
       token = token ? token.replace(/^"|"$/g, '').trim() : null;
       if (!token) {
@@ -44,6 +46,8 @@ const MyMed = () => {
         }
       } catch (err) {
         setError("Error connecting to backend");
+      } finally {
+        setLoading(false);
       }
     };
 

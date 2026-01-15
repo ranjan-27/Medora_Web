@@ -10,6 +10,7 @@ const medicineRoutes = require('./routes/medicine');
 const transporter = require('./config/emailConfig');
 // backend/app.js or backend/server.js
 const notificationsRoute = require('./routes/notifications');
+const contactRoute = require('./routes/contact');
 const debugRoute = require('./routes/debug');
 const { startAutoMissJob } = require("./jobs/autoMiss");
 // Load environment variables first
@@ -28,6 +29,7 @@ startAutoMissJob();
 app.use('/api/notifications', notificationsRoute);
 app.use('/api/auth', authRoutes);
 app.use("/api/medicines", medicineRoutes);
+app.use('/api/contact', contactRoute);
 app.use('/api/debug', debugRoute);
 
 

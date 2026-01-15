@@ -77,8 +77,8 @@ exports.sendOtp = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Generate a 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
+    // Generate a 6-digit OTP (inclusive range)
+    const otp = crypto.randomInt(100000, 1000000).toString();
 
     // Save OTP in DB with 5 min expiry
     await OTP.deleteMany({ email }); // clear old OTPs
@@ -169,7 +169,7 @@ exports.forgotPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const otp = crypto.randomInt(100000, 999999).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
 
     await OTP.deleteMany({ email });
     await OTP.create({ email, otp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) });
