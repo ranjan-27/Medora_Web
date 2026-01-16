@@ -20,14 +20,33 @@ const transporter = nodemailer.createTransport({
   socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT || 30000),
 });
 
-// Brevo (Sendinblue) fallback if BREVO_API_KEY present
+// Brevo (Sendinblue) fallback if BREVO_API_KEY present - robust init
 let useBrevo = Boolean(process.env.BREVO_API_KEY);
 let brevoClient = null;
 if (useBrevo) {
-  const SibApiV3Sdk = require("@sendinblue/client");
-  brevoClient = new SibApiV3Sdk.TransactionalEmailsApi();
-  const defaultClient = SibApiV3Sdk.ApiClient.instance;
-  defaultClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
+  try {
+    const SibApi = require("@sendinblue/client");
+    // support different package shapes (CJS default vs named exports)
+    const ApiClient = SibApi.ApiClient || (SibApi.default && SibApi.default.ApiClient);
+    const TransactionalEmailsApi = SibApi.TransactionalEmailsApi || (SibApi.default && SibApi.default.TransactionalEmailsApi);
+
+    if (!ApiClient || !TransactionalEmailsApi) {
+      console.warn("Brevo client not available in expected shape, falling back to SMTP");
+      useBrevo = false;
+    } else {
+      const defaultClient = ApiClient.instance;
+      defaultClient.authentications = defaultClient.authentications || {};
+      if (defaultClient.authentications["api-key"]) {
+        defaultClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
+      } else if (defaultClient.authentications["apiKey"]) {
+        defaultClient.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY;
+      }
+      brevoClient = new TransactionalEmailsApi();
+    }
+  } catch (err) {
+    console.warn("Failed to initialize Brevo client, falling back to SMTP:", err.message || err);
+    useBrevo = false;
+  }
 }
 
 // verify SMTP only in non-production
@@ -42,7 +61,7 @@ const originalSendMail = transporter.sendMail.bind(transporter);
 transporter.sendMail = async function (mailOptions = {}) {
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
 
-  if (useBrevo) {
+  if (useBrevo && brevoClient) {
     // normalize recipients
     const toArray = [];
     if (Array.isArray(mailOptions.to)) {
