@@ -21,33 +21,41 @@ const transporter = nodemailer.createTransport({
 });
 
 // Brevo (Sendinblue) fallback if BREVO_API_KEY present - robust init
+// ...existing code...
+// Brevo (Sendinblue) fallback if BREVO_API_KEY present - robust init (HTTP fallback)
 let useBrevo = Boolean(process.env.BREVO_API_KEY);
 let brevoClient = null;
 if (useBrevo) {
   try {
-    const SibApi = require("@sendinblue/client");
-    // support different package shapes (CJS default vs named exports)
-    const ApiClient = SibApi.ApiClient || (SibApi.default && SibApi.default.ApiClient);
-    const TransactionalEmailsApi = SibApi.TransactionalEmailsApi || (SibApi.default && SibApi.default.TransactionalEmailsApi);
-
-    if (!ApiClient || !TransactionalEmailsApi) {
-      console.warn("Brevo client not available in expected shape, falling back to SMTP");
-      useBrevo = false;
-    } else {
-      const defaultClient = ApiClient.instance;
-      defaultClient.authentications = defaultClient.authentications || {};
-      if (defaultClient.authentications["api-key"]) {
-        defaultClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
-      } else if (defaultClient.authentications["apiKey"]) {
-        defaultClient.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY;
-      }
-      brevoClient = new TransactionalEmailsApi();
-    }
+    // Use lightweight HTTP POST to Brevo API to avoid SDK shape/version issues
+    brevoClient = {
+      sendTransacEmail: async (payload) => {
+        const res = await fetch("https://api.sendinblue.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "api-key": process.env.BREVO_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = body.message || body.error || `${res.status} ${res.statusText}`;
+          const err = new Error(`Brevo API error: ${msg}`);
+          err.response = body;
+          throw err;
+        }
+        return body;
+      },
+    };
+    console.info("Brevo HTTP client initialized");
   } catch (err) {
-    console.warn("Failed to initialize Brevo client, falling back to SMTP:", err.message || err);
+    console.warn("Failed to initialize Brevo HTTP client, falling back to SMTP:", err.message || err);
     useBrevo = false;
+    brevoClient = null;
   }
 }
+// ...existing code...
 
 // verify SMTP only in non-production
 if (process.env.NODE_ENV !== "production") {
